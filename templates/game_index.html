@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雙人劇情解謎遊戲</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Microsoft JhengHei', 'Segoe UI', Tahoma, sans-serif;
+        }
+        .container {
+            max-width: 900px;
+            padding-top: 2rem;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #343a40;
+            color: white;
+            border-bottom: none;
+            padding: 1.2rem 1.5rem;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .btn-primary {
+            background-color: #343a40;
+            border-color: #343a40;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background-color: #23272b;
+            border-color: #23272b;
+        }
+        .btn-outline-primary {
+            border-color: #343a40;
+            color: #343a40;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+        .btn-outline-primary:hover {
+            background-color: #343a40;
+            border-color: #343a40;
+        }
+        .form-control {
+            border-radius: 50px;
+            padding: 0.75rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .nav-tabs {
+            border-bottom: none;
+            margin-bottom: 1.5rem;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 50px;
+            padding: 0.6rem 1.5rem;
+            margin-right: 0.5rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #343a40;
+            color: white;
+        }
+        .nav-tabs .nav-link:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+        .intro-card {
+            background-color: #343a40;
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+        .intro-card h1 {
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+        }
+        .intro-card p {
+            opacity: 0.8;
+        }
+        .feature-icon {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: #343a40;
+        }
+        .feature-card {
+            padding: 1.5rem;
+            height: 100%;
+            transition: transform 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .input-group-text {
+            border-radius: 50px 0 0 50px;
+            background-color: #343a40;
+            color: white;
+            border: none;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+        }
+        .input-group .form-control {
+            border-radius: 0 50px 50px 0;
+            margin-bottom: 0;
+        }
+        .tab-pane {
+            padding: 1rem 0;
+        }
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: #6c757d;
+            padding-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Intro Header -->
+        <div class="intro-card text-center">
+            <h1>雙人劇情解謎遊戲</h1>
+            <p class="lead">與朋友一起探索神秘故事，合作解開謎題，發現隱藏的真相</p>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="gameTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab" aria-controls="create" aria-selected="true">
+                            <i class="bi bi-plus-circle me-1"></i> 建立新遊戲
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="join-tab" data-bs-toggle="tab" data-bs-target="#join" type="button" role="tab" aria-controls="join" aria-selected="false">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> 加入遊戲
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="gameTabsContent">
+                    <!-- Create Game Tab -->
+                    <div class="tab-pane fade show active" id="create" role="tabpanel" aria-labelledby="create-tab">
+                        <h4 class="mb-4">建立一個新的遊戲房間</h4>
+                        <form action="{{ url_for('create_game') }}" method="post">
+                            <div class="mb-3">
+                                <label for="nickname" class="form-label">你的暱稱 (選填)</label>
+                                <input type="text" class="form-control" id="nickname" name="nickname" placeholder="輸入你的暱稱">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-plus-circle me-2"></i> 建立遊戲房間
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Join Game Tab -->
+                    <div class="tab-pane fade" id="join" role="tabpanel" aria-labelledby="join-tab">
+                        <h4 class="mb-4">加入朋友的遊戲房間</h4>
+                        <form action="{{ url_for('join_game') }}" method="post">
+                            <div class="mb-3">
+                                <label for="room_code" class="form-label">房間代碼</label>
+                                <input type="text" class="form-control" id="room_code" name="room_code" placeholder="輸入6位房間代碼" required>
+                                <div class="form-text">請輸入朋友分享的6位房間代碼</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="join_nickname" class="form-label">你的暱稱 (選填)</label>
+                                <input type="text" class="form-control" id="join_nickname" name="nickname" placeholder="輸入你的暱稱">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-box-arrow-in-right me-2"></i> 加入遊戲
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="row mt-5">
+            <div class="col-md-4 mb-4">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <h5>雙人合作模式</h5>
+                        <p class="text-muted">每位玩家擁有不同的線索與視角，需要互相協作才能解開謎題</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-book"></i>
+                        </div>
+                        <h5>引人入勝的劇情</h5>
+                        <p class="text-muted">探索精心編寫的故事章節，逐步揭開謎團</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-puzzle"></i>
+                        </div>
+                        <h5>多樣化謎題</h5>
+                        <p class="text-muted">從簡單的數字謎題到需要邏輯推理的複雜謎題，考驗你的解謎能力</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="text-center">
+                <p>
+                    <a href="{{ url_for('excel_tool') }}" class="text-decoration-none text-muted">
+                        <small>項目編號處理工具 <i class="bi bi-box-arrow-up-right"></i></small>
+                    </a>
+                </p>
+                <p><small>&copy; 2025 雙人劇情解謎遊戲</small></p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

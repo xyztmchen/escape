@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ module.title }} - 雙人劇情解謎遊戲</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Microsoft JhengHei', 'Segoe UI', Tahoma, sans-serif;
+            padding-bottom: 70px; /* Space for fixed chat bar */
+        }
+        .container {
+            max-width: 1000px;
+            padding-top: 2rem;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #343a40;
+            color: white;
+            border-bottom: none;
+            padding: 1.2rem 1.5rem;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .btn-primary {
+            background-color: #343a40;
+            border-color: #343a40;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background-color: #23272b;
+            border-color: #23272b;
+        }
+        .story-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            white-space: pre-line;
+            margin-bottom: 2rem;
+        }
+        .puzzle-box {
+            background-color: #e9ecef;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+            position: relative;
+        }
+        .puzzle-box::before {
+            content: '謎題提示';
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background-color: #343a40;
+            color: white;
+            padding: 0.2rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+        }
+        .hint-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            white-space: pre-line;
+        }
+        .answer-form {
+            margin-top: 1.5rem;
+        }
+        .chat-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            z-index: 1000;
+        }
+        .chat-toggle {
+            position: absolute;
+            top: -40px;
+            right: 20px;
+            background-color: #343a40;
+            color: white;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+        .chat-messages {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .message {
+            padding: 0.5rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        .message-self {
+            background-color: #343a40;
+            color: white;
+            margin-left: auto;
+        }
+        .message-other {
+            background-color: #e9ecef;
+            margin-right: auto;
+        }
+        .waiting-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 2000;
+        }
+        .pulse-circle {
+            width: 100px;
+            height: 100px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            animation: pulse 2s infinite;
+        }
+        .pulse-icon {
+            font-size: 3rem;
+        }
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+            }
+        }
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(40, 167, 69, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 2000;
+        }
+        .success-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+        .chapter-info {
+            background-color: #343a40;
+            color: white;
+            display: inline-block;
+            padding: 0.3rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .role-badge {
+            background-color: #17a2b8;
+            color: white;
+            display: inline-block;
+            padding: 0.3rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            margin-left: 1rem;
+        }
+        .after-text {
+            padding: 1.5rem;
+            background-color: #e2f3fc;
+            border-radius: 15px;
+            margin-top: 2rem;
+            border-left: 5px solid #17a2b8;
+            white-space: pre-line;
+        }
+        .btn-next {
+            margin-top: 2rem;
+        }
+        .feedback {
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            display: none;
+        }
+        .feedback-success {
+            background-color: #d4edda;
+            border-left: 5px solid #28a745;
+        }
+        .feedback-error {
+            background-color: #f8d7da;
+            border-left: 5px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Chapter Info -->
+        <div class="text-center mb-4">
+            <div class="chapter-info">
+                第 {{ game.current_chapter + 1 }} 章
+            </div>
+            <div class="role-badge">
+                {{ '角色一' if player.role == 'role1' else '角色二' }}
+            </div>
+            <h1 class="mt-3">{{ module.title }}</h1>
+        </div>
+
+        <!-- Story Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-book me-2"></i>故事內容</h5>
+            </div>
+            <div class="card-body">
+                <div class="story-text">{{ module.story_text }}</div>
+                
+                <!-- After solving the puzzle -->
+                {% if progress.is_puzzle_complete %}
+                <div class="after-text">{{ module.after_text }}</div>
+                {% endif %}
+                
+                <div class="text-center">
+                    <button id="storyReadyBtn" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-2"></i> 我已閱讀完畢
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Puzzle Card -->
+        <div class="card mb-4" id="puzzleCard" {% if not progress.is_story_complete %}style="display: none;"{% endif %}>
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-puzzle me-2"></i>解謎環節</h5>
+            </div>
+            <div class="card-body">
+                <div class="puzzle-box">
+                    <div class="hint-text">{{ hint }}</div>
+                    
+                    {% if not progress.is_puzzle_complete and (
+					(player.role == 'role1' and module.current_answerer == 'player1') or 
+					(player.role == 'role2' and module.current_answerer == 'player2')
+					) %}
+                    <form id="answerForm" class="answer-form">
+                        <div class="input-group">
+                            <input type="text" id="answerInput" class="form-control" placeholder="輸入答案..." required>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send me-1"></i> 提交
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="puzzleFeedback" class="feedback"></div>
+					
+					{% elif not progress.is_puzzle_complete and (
+					(player.role == 'role1' and module.current_answerer == 'player2') or 
+					(player.role == 'role2' and module.current_answerer == 'player1')
+					) %}
+                    <div class="feedback feedback-success" style="display: block;">
+                        <i class="bi bi-check-circle-fill me-2"></i> 請等待對方回答
+                    </div>					
+                    {% else %}
+                    <div class="feedback feedback-success" style="display: block;">
+                        <i class="bi bi-check-circle-fill me-2"></i> 謎題已解開！
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if progress.is_puzzle_complete and not game.is_complete %}
+                <div class="text-center btn-next">
+                    <button id="nextChapterBtn" class="btn btn-primary btn-lg">
+                        <i class="bi bi-arrow-right-circle me-2"></i> 進入下一章
+                    </button>
+                </div>
+                {% endif %}
+                
+                {% if game.is_complete %}
+                <div class="text-center btn-next">
+                    <h3 class="mb-4">恭喜完成所有章節！</h3>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house me-2"></i> 返回首頁
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Container -->
+    <div class="chat-container">
+        <button class="chat-toggle" id="chatToggle">
+            <i class="bi bi-chat-dots me-1"></i> 玩家交流
+        </button>
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will be inserted here dynamically -->
+        </div>
+        <form id="chatForm">
+            <div class="input-group">
+                <input type="text" id="chatInput" class="form-control" placeholder="輸入訊息與另一位玩家交流...">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-send"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Waiting Overlay (Initially hidden) -->
+    <div class="waiting-overlay" id="waitingOverlay" style="display: none;">
+        <div class="pulse-circle">
+            <i class="bi bi-hourglass-split pulse-icon"></i>
+        </div>
+        <h3 id="waitingMessage">等待另一位玩家完成閱讀...</h3>
+    </div>
+
+    <!-- Success Overlay (Initially hidden) -->
+    <div class="success-overlay" id="successOverlay" style="display: none;">
+        <i class="bi bi-check-circle-fill success-icon"></i>
+        <h3 id="successMessage">謎題解開成功！</h3>
+        <p>正在載入下一章節...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const storyReadyBtn = document.getElementById('storyReadyBtn');
+            const puzzleCard = document.getElementById('puzzleCard');
+            const answerForm = document.getElementById('answerForm');
+            const answerInput = document.getElementById('answerInput');
+            const puzzleFeedback = document.getElementById('puzzleFeedback');
+            const nextChapterBtn = document.getElementById('nextChapterBtn');
+            const waitingOverlay = document.getElementById('waitingOverlay');
+            const waitingMessage = document.getElementById('waitingMessage');
+            const successOverlay = document.getElementById('successOverlay');
+            const successMessage = document.getElementById('successMessage');
+            const chatToggle = document.getElementById('chatToggle');
+            const chatMessages = document.getElementById('chatMessages');
+            const chatForm = document.getElementById('chatForm');
+            const chatInput = document.getElementById('chatInput');
+            
+            // Chat functionality
+            chatToggle.addEventListener('click', function() {
+                if (chatMessages.style.display === 'none' || !chatMessages.style.display) {
+                    chatMessages.style.display = 'block';
+                    chatToggle.innerHTML = '<i class="bi bi-chevron-down me-1"></i> 收起交流';
+                } else {
+                    chatMessages.style.display = 'none';
+                    chatToggle.innerHTML = '<i class="bi bi-chat-dots me-1"></i> 玩家交流';
+                }
+            });
+            
+            // Load initial messages
+            loadMessages();
+            
+            // Periodically check for new messages
+            setInterval(loadMessages, 3000);
+            
+            // Send message
+            chatForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (chatInput.value.trim() === '') return;
+                
+                fetch('/api/send_message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'content': chatInput.value
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        chatInput.value = '';
+                        addMessage({
+                            sender: data.sender,
+                            content: data.content,
+                            sender_id: {{ player.id }},
+                            formatted_time: data.timestamp
+                        }, true);
+                    }
+                })
+                .catch(error => console.error('Error sending message:', error));
+            });
+            
+            // Mark story as read
+            storyReadyBtn.addEventListener('click', function() {
+                // Mark player as ready
+                fetch('/api/mark_ready', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: ''
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        storyReadyBtn.disabled = true;
+                        storyReadyBtn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> 已完成閱讀';
+                        
+                        // Show waiting overlay if not all players are ready
+                        if (!data.all_ready) {
+                            waitingOverlay.style.display = 'flex';
+                            waitingMessage.innerText = `等待另一位玩家完成閱讀... (${data.ready_count}/${data.total_players})`;
+                            
+                            // Start polling for all players ready
+                            checkAllPlayersReady();
+                        } else {
+                            // All players already ready
+                            markStoryComplete();
+                        }
+                    }
+                })
+                .catch(error => console.error('Error marking as ready:', error));
+            });
+            
+            // Check if all players are ready
+            function checkAllPlayersReady() {
+                const checkInterval = setInterval(function() {
+                    fetch('/api/check_all_ready')
+                        .then(response => response.json())
+                        .then(data => {
+                            waitingMessage.innerText = `等待另一位玩家完成閱讀... (${data.ready_count}/${data.total_players})`;
+                            
+                            if (data.all_ready) {
+                                clearInterval(checkInterval);
+                                markStoryComplete();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking ready status:', error);
+                            clearInterval(checkInterval);
+                        });
+                }, 2000);
+            }
+            
+            // Mark story as complete and show puzzle
+            function markStoryComplete() {
+                fetch('/api/mark_story_complete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: ''
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Hide waiting overlay
+                        waitingOverlay.style.display = 'none';
+                        
+                        // Show puzzle card
+                        puzzleCard.style.display = 'block';
+                        
+                        // Scroll to puzzle card
+                        puzzleCard.scrollIntoView({behavior: 'smooth'});
+                    }
+                })
+                .catch(error => console.error('Error marking story complete:', error));
+            }
+            
+            // Submit answer
+            if (answerForm) {
+                answerForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    if (answerInput.value.trim() === '') return;
+                    
+                    fetch('/api/submit_answer', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            'answer': answerInput.value
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            if (data.correct) {
+                                // Show success feedback
+                                puzzleFeedback.className = 'feedback feedback-success';
+                                puzzleFeedback.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> ${data.message}`;
+                                puzzleFeedback.style.display = 'block';
+                                
+                                // Disable form
+                                answerInput.disabled = true;
+                                answerForm.querySelector('button').disabled = true;
+                                
+                                // Show success overlay
+                                successOverlay.style.display = 'flex';
+                                
+                                // If next chapter available, redirect after delay
+                                if (data.next_chapter) {
+                                    setTimeout(function() {
+                                        window.location.reload();
+                                    }, 3000);
+                                } else if (data.game_complete) {
+                                    successMessage.innerText = '恭喜！你們已完成所有謎題！';
+                                    setTimeout(function() {
+                                        window.location.reload();
+                                    }, 3000);
+                                } else {
+                                    // Just close overlay after delay
+                                    setTimeout(function() {
+                                        successOverlay.style.display = 'none';
+                                        window.location.reload();
+                                    }, 3000);
+                                }
+                            } else {
+                                // Show error feedback
+                                puzzleFeedback.className = 'feedback feedback-error';
+                                puzzleFeedback.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i> ${data.message} (嘗試次數: ${data.attempt_count})`;
+                                puzzleFeedback.style.display = 'block';
+                                
+                                // Clear input
+                                answerInput.value = '';
+                                answerInput.focus();
+                            }
+                        }
+                    })
+                    .catch(error => console.error('Error submitting answer:', error));
+                });
+            }
+            
+            // Next chapter button
+            if (nextChapterBtn) {
+                nextChapterBtn.addEventListener('click', function() {
+                    window.location.reload();
+                });
+            }
+            
+            // Functions to handle chat messages
+            function loadMessages() {
+                fetch('/api/get_messages')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Clear existing messages and add new ones
+                        if (data.messages && data.messages.length > 0) {
+                            chatMessages.innerHTML = '';
+                            data.messages.forEach(msg => addMessage(msg));
+                            
+                            // Scroll to bottom of messages
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    })
+                    .catch(error => console.error('Error loading messages:', error));
+            }
+            
+            function addMessage(message, isNew = false) {
+                const msgDiv = document.createElement('div');
+                const isSelf = message.sender_id == {{ player.id }};
+                msgDiv.className = `message ${isSelf ? 'message-self' : 'message-other'}`;
+                
+                msgDiv.innerHTML = `
+                    <div>
+                        <small>${isSelf ? '你' : message.sender}</small>
+                        <p class="mb-0">${message.content}</p>
+                        <small class="text-muted">${message.formatted_time}</small>
+                    </div>
+                `;
+                
+                chatMessages.appendChild(msgDiv);
+                
+                // If this is a new message and chat is not visible, change the toggle text to indicate new message
+                if (isNew && (chatMessages.style.display === 'none' || !chatMessages.style.display)) {
+                    chatToggle.innerHTML = '<i class="bi bi-chat-dots-fill me-1"></i> 新訊息！';
+                }
+            }
+            
+            // If the puzzle is already completed, disable answer form
+            {% if progress.is_puzzle_complete and answerForm %}
+            answerInput.disabled = true;
+            answerForm.querySelector('button').disabled = true;
+            {% endif %}
+			
+			
+			
+			// Check answer status periodically		
+			function checkAnswerStatus() {
+				fetch('/api/check_answer_status')
+					.then(response => response.json())
+					.then(data => {
+						if (data.error) {
+							console.error(data.error);
+							return;
+						}						
+						
+						if (data.is_answer_ok) {
+							window.location.reload();
+						}									
+					})
+					.catch(error => {
+						console.error('Error checking game status:', error);
+					});
+			}
+			
+			// Check status every second
+			const statusInterval = setInterval(checkAnswerStatus, 1000);
+			
+			// Initial check
+			checkAnswerStatus();
+			
+			
+        });
+    </script>
+</body>
+</html>

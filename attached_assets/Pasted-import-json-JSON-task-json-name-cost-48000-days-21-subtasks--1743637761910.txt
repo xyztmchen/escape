@@ -1,0 +1,89 @@
+import json
+
+# 測試用 JSON
+task_json = '''
+[
+    {"name": "地基工程", "cost": 48000, "days": 21, "subtasks": [
+        {"name": "挖方", "cost": 8000, "days": 8, "subtasks": [
+            {"name": "機械開挖", "cost": 5000, "days": 3},
+            {"name": "人工開挖", "cost": 3000, "days": 5}
+        ]},
+        {"name": "基礎", "cost": 35000, "days": 13, "subtasks": [
+            {"name": "混凝土澆築", "cost": 20000, "days": 7},
+            {"name": "鋼筋綁紮", "cost": 15000, "days": 6}
+        ]}
+    ]},
+    {"name": "結構工程", "cost": 52000, "days": 14, "subtasks": [
+        {"name": "柱", "cost": 22000, "days": 7, "subtasks": [
+            {"name": "模板施作", "cost": 10000, "days": 4},
+            {"name": "混凝土澆築", "cost": 12000, "days": 3}
+        ]},
+        {"name": "梁", "cost": 20000, "days": 7, "subtasks": [
+            {"name": "模板施作", "cost": 9000, "days": 4},
+            {"name": "混凝土澆築", "cost": 11000, "days": 3}
+        ]}
+    ]}
+]
+'''
+
+# 解析 JSON
+task_data = json.loads(task_json)
+
+# 生成 WBS 編碼並建立索引
+def generate_wbs(tasks, prefix="", parent_path=""):
+    """ 遞迴生成 WBS 編碼，並建立索引 """
+    result = []
+    wbs_index = {}  # 用於快速查找項目
+    for index, task in enumerate(tasks, 1):
+        code = f"{prefix}{index:02d}"
+        full_path = f"{parent_path} {task['name']}".strip()
+        wbs_item = {
+            "code": code,
+            "name": task["name"],
+            "cost": task["cost"],
+            "days": task["days"],
+            "full_path": full_path
+        }
+        result.append(wbs_item)
+        wbs_index[full_path] = wbs_item  # 存入索引
+        
+        if "subtasks" in task:
+            sub_result, sub_index = generate_wbs(task["subtasks"], code + ".", full_path)
+            result.extend(sub_result)
+            wbs_index.update(sub_index)
+
+    return result, wbs_index
+
+# 查詢 WBS（包含父階層）
+def search_wbs(wbs_index, query):
+    """ 根據輸入的工項名稱查找 WBS，並顯示完整的層級路徑 """
+    if query not in wbs_index:
+        return "找不到該工項，請確認父階層是否已輸入"
+    
+    result = []
+    query_parts = query.split()
+    
+    # 遞迴找出所有上層
+    for i in range(1, len(query_parts) + 1):
+        sub_query = " ".join(query_parts[:i])
+        if sub_query in wbs_index:
+            task = wbs_index[sub_query]
+            result.append(f"{task['code']} {task['name']} {task['cost']} {task['days']}")
+
+    return "\n".join(result)
+
+# 產生 WBS 結構與索引
+wbs_result, wbs_dict = generate_wbs(task_data)
+
+# 測試查詢
+queries = ["地基工程 挖方 機械開挖"]
+print(f"WBS編碼 工程名稱 成本 工期\n\n")
+for query in queries:
+    print(f"{search_wbs(wbs_dict, query)}\n")
+    
+    
+# 測試輸出 WBS
+#for item in wbs_result:
+#    print(f"{item['code']} {item['name']} {item['cost']} {item['days']}")
+
+#print("\n======= 測試查詢 =======\n")

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲大廳 - 雙人劇情解謎遊戲</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Microsoft JhengHei', 'Segoe UI', Tahoma, sans-serif;
+        }
+        .container {
+            max-width: 900px;
+            padding-top: 2rem;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #343a40;
+            color: white;
+            border-bottom: none;
+            padding: 1.2rem 1.5rem;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .btn-primary {
+            background-color: #343a40;
+            border-color: #343a40;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background-color: #23272b;
+            border-color: #23272b;
+        }
+        .btn-outline-primary {
+            border-color: #343a40;
+            color: #343a40;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+        .btn-outline-primary:hover {
+            background-color: #343a40;
+            border-color: #343a40;
+        }
+        .room-code {
+            font-family: monospace;
+            font-size: 2.5rem;
+            letter-spacing: 0.5rem;
+            background-color: #e9ecef;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 1rem 0;
+        }
+        .waiting-animation {
+            text-align: center;
+            padding: 2rem 0;
+        }
+        .dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: #343a40;
+            border-radius: 50%;
+            margin: 0 5px;
+            animation: pulse 1.5s infinite;
+        }
+        .dot:nth-child(2) {
+            animation-delay: 0.3s;
+        }
+        .dot:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+        @keyframes pulse {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+        }
+        .player-list {
+            margin: 1.5rem 0;
+        }
+        .player-item {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .player-icon {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+        }
+        .player-host {
+            background-color: #e9ecef;
+        }
+        .player-host .player-icon {
+            color: #dc3545;
+        }
+        .copy-btn {
+            cursor: pointer;
+            color: #6c757d;
+            transition: color 0.2s;
+        }
+        .copy-btn:hover {
+            color: #343a40;
+        }
+        .counter {
+            font-size: 1.5rem;
+            margin-top: 1rem;
+        }
+        #checkStatusTimer {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .tooltip-inner {
+            background-color: #343a40;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-controller me-2"></i>遊戲大廳</h5>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="mb-3">房間代碼</h2>
+                <div class="room-code" id="roomCode">{{ game.room_code }}</div>
+                
+                <div class="d-flex justify-content-center">
+                    <button class="btn btn-sm btn-outline-secondary copy-btn" id="copyBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="複製房間代碼">
+                        <i class="bi bi-clipboard me-1"></i> 複製代碼
+                    </button>
+                </div>
+                
+                <div class="mt-4">
+                    <h3>等待玩家加入</h3>
+                    <div class="waiting-animation">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                    
+                    <div class="player-list">
+                        <h5>目前玩家 ({{ game.player_count() }}/2)</h5>
+                        {% for p in game.players %}
+                        <div class="player-item {% if p.is_host %}player-host{% endif %}">
+                            <div class="d-flex align-items-center">
+                                <span class="player-icon">
+                                    <i class="bi {% if p.is_host %}bi-person-fill-lock{% else %}bi-person-fill{% endif %}"></i>
+                                </span>
+                                <div>
+                                    <h6 class="mb-0">{{ p.nickname or '玩家' + p.id|string }}</h6>
+                                    <small class="text-muted">{% if p.is_host %}房主{% else %}玩家{% endif %}</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-{% if p.is_host %}danger{% else %}primary{% endif %}">
+                                {{ p.role }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="counter">
+                        <span id="playerCount">{{ game.player_count() }}</span>/2 位玩家已加入
+                    </div>
+                    <div id="checkStatusTimer">
+                        檢查中...
+                    </div>
+                </div>
+                
+                <div class="mt-5">
+                    {% if is_host %}
+                        <p class="mb-4">請將房間代碼告訴另一位玩家，等待對方加入後即可開始遊戲。</p>
+                    {% else %}
+                        <p class="mb-4">等待房主開始遊戲...</p>
+                    {% endif %}
+                    
+                    {% if game.player_count() >= 2 %}
+                        <a href="{{ url_for('game_start', room_code=game.room_code) }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-play-fill me-2"></i> 開始遊戲
+                        </a>
+                    {% else %}
+                        <button class="btn btn-primary btn-lg" disabled>
+                            <i class="bi bi-play-fill me-2"></i> 等待玩家加入 ({{ game.player_count() }}/2)
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        
+        // Copy room code functionality
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            var roomCode = document.getElementById('roomCode').innerText;
+            navigator.clipboard.writeText(roomCode).then(function() {
+                var tooltip = bootstrap.Tooltip.getInstance(document.getElementById('copyBtn'));
+                tooltip.dispose();
+                
+                document.getElementById('copyBtn').setAttribute('data-bs-original-title', '已複製！');
+                new bootstrap.Tooltip(document.getElementById('copyBtn')).show();
+                
+                setTimeout(function() {
+                    document.getElementById('copyBtn').setAttribute('data-bs-original-title', '複製房間代碼');
+                    new bootstrap.Tooltip(document.getElementById('copyBtn'));
+                }, 2000);
+            });
+        });
+        
+        // Check game status periodically
+        let checkCount = 0;
+        const maxChecks = 120; // 2 minutes max wait time
+        
+        function checkGameStatus() {
+            if (checkCount >= maxChecks) {
+                clearInterval(statusInterval);
+                document.getElementById('checkStatusTimer').innerText = '長時間未加入，請刷新頁面或創建新遊戲';
+                return;
+            }
+            
+            fetch('/api/check_player_status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error(data.error);
+                        return;
+                    }
+                    
+                    // Update player count
+                    document.getElementById('playerCount').innerText = data.player_count;
+                    
+                    // If game is full, redirect or enable start button
+                    if (data.game_full) {
+                        window.location.href = '{{ url_for("game_start", room_code=game.room_code) }}';
+                    }
+                    
+                    // Update timer text
+                    document.getElementById('checkStatusTimer').innerText = 
+                        `自動檢查中 (${checkCount}秒)...`;
+                    
+                    checkCount++;
+                })
+                .catch(error => {
+                    console.error('Error checking game status:', error);
+                });
+        }
+        
+        // Check status every second
+        const statusInterval = setInterval(checkGameStatus, 1000);
+        
+        // Initial check
+        checkGameStatus();
+    </script>
+</body>
+</html>

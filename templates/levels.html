@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>確認項目階層設定</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #6c757d;
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .btn-primary {
+            background-color: #5a6268;
+            border-color: #5a6268;
+        }
+        .btn-primary:hover {
+            background-color: #4a5258;
+            border-color: #4a5258;
+        }
+        .level-item {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+        }
+        .level-item .drag-handle {
+            cursor: grab;
+            margin-right: 10px;
+            color: #6c757d;
+        }
+        .level-item:hover {
+            background-color: #e9ecef;
+        }
+        code {
+            color: #6c757d;
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .pattern-preview {
+            display: inline-block;
+            margin-left: 10px;
+            color: #6c757d;
+        }
+        .alert {
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <h1 class="text-center mb-4">確認項目階層設定</h1>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- File Info -->
+        <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle me-2"></i> 正在處理檔案: <strong>{{ file_name }}</strong>
+        </div>
+        
+        <!-- Levels Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-list-ol me-2"></i>階層設定</h5>
+            </div>
+            <div class="card-body">
+                <p>系統已自動識別以下階層，您可以根據需要調整順序或進行修改：</p>
+                
+                <form action="/process" method="post" id="levelsForm">
+                    <div class="mb-3">
+                        <label for="levels" class="form-label">階層設定</label>
+                        <div id="levelsEditor" class="mb-3">
+                            <!-- 階層項目會在這裡通過JS生成 -->
+                        </div>
+                        
+                        <textarea class="form-control" id="custom_levels" name="custom_levels" rows="4" style="font-family: monospace;">{{ detected_levels }}</textarea>
+                        <small class="form-text text-muted">此為JSON格式的階層設定。您可以手動編輯，或使用上方的視覺化介面。</small>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="/" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> 返回
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check2 me-1"></i> 確認並處理
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-question-circle me-2"></i>階層設定說明</h5>
+            </div>
+            <div class="card-body">
+                <h6>階層設定說明：</h6>
+                <ul>
+                    <li>項目階層從上到下按順序定義，決定了項目的層級關係</li>
+                    <li>修改順序可以調整不同編號類型的階層關係</li>
+                    <li>常見的模式標記：
+                        <ul>
+                            <li><code>{NUM}</code> - 數字 (1, 2, 3...)</li>
+                            <li><code>{u_ALPHA}</code> - 大寫字母 (A, B, C...)</li>
+                            <li><code>{l_ALPHA}</code> - 小寫字母 (a, b, c...)</li>
+                            <li><code>{u_ROMAN}</code> - 大寫羅馬數字 (I, II, III...)</li>
+                            <li><code>{l_ROMAN}</code> - 小寫羅馬數字 (i, ii, iii...)</li>
+                            <li><code>{CH}</code> - 中文數字 (一, 二, 三...)</li>
+                            <li><code>\\({NUM}\\)</code> - 帶括號的數字 ((1), (2), (3)...)</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 解析識別到的階層
+            let levelsData = JSON.parse(document.getElementById('custom_levels').value);
+            const levelsEditor = document.getElementById('levelsEditor');
+            const customLevelsInput = document.getElementById('custom_levels');
+            
+            // 根據模式顯示名稱
+            function getPatternDisplayName(pattern) {
+                const patternMapping = {
+                    '{NUM}': '數字 (1, 2, 3...)',
+                    '{u_ALPHA}': '大寫字母 (A, B, C...)',
+                    '{l_ALPHA}': '小寫字母 (a, b, c...)',
+                    '{u_ROMAN}': '大寫羅馬數字 (I, II, III...)',
+                    '{l_ROMAN}': '小寫羅馬數字 (i, ii, iii...)',
+                    '{CH}': '中文數字 (一, 二, 三...)',
+                    '{CH_b}': '大寫中文數字 (壹, 貳, 參...)',
+                    '\\({NUM}\\)': '帶括號的數字 ((1), (2)...)',
+                    '\\({NUM}\\.{NUM}\\)': '帶括號的多層級數字 ((1.1), (1.2)...)'
+                };
+                
+                return patternMapping[pattern] || pattern;
+            }
+            
+            // 初始化視覺化介面
+            function renderLevels() {
+                levelsEditor.innerHTML = '';
+                
+                levelsData.forEach((pattern, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'level-item';
+                    itemDiv.dataset.index = index;
+                    
+                    itemDiv.innerHTML = `
+                        <div class="drag-handle"><i class="bi bi-grip-vertical"></i></div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-secondary me-2">層級 ${index + 1}</span>
+                                <strong class="me-2">${pattern}</strong>
+                                <span class="pattern-preview">${getPatternDisplayName(pattern)}</span>
+                            </div>
+                        </div>
+                        <div class="ms-auto">
+                            <button type="button" class="btn btn-sm btn-outline-secondary move-up" ${index === 0 ? 'disabled' : ''}>
+                                <i class="bi bi-arrow-up"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary move-down" ${index === levelsData.length - 1 ? 'disabled' : ''}>
+                                <i class="bi bi-arrow-down"></i>
+                            </button>
+                        </div>
+                    `;
+                    
+                    levelsEditor.appendChild(itemDiv);
+                });
+                
+                // 添加按鈕事件
+                document.querySelectorAll('.move-up').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const item = this.closest('.level-item');
+                        const index = parseInt(item.dataset.index);
+                        if (index > 0) {
+                            swapLevels(index, index - 1);
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('.move-down').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const item = this.closest('.level-item');
+                        const index = parseInt(item.dataset.index);
+                        if (index < levelsData.length - 1) {
+                            swapLevels(index, index + 1);
+                        }
+                    });
+                });
+            }
+            
+            // 交換層級順序
+            function swapLevels(index1, index2) {
+                const temp = levelsData[index1];
+                levelsData[index1] = levelsData[index2];
+                levelsData[index2] = temp;
+                
+                // 更新 UI 和 textarea
+                renderLevels();
+                updateTextarea();
+            }
+            
+            // 更新 textarea 的值
+            function updateTextarea() {
+                customLevelsInput.value = JSON.stringify(levelsData);
+            }
+            
+            // 監聽 textarea 的變化
+            customLevelsInput.addEventListener('input', function() {
+                try {
+                    levelsData = JSON.parse(this.value);
+                    renderLevels();
+                } catch (e) {
+                    console.error('JSON 解析錯誤:', e);
+                }
+            });
+            
+            // 初始化渲染
+            renderLevels();
+        });
+    </script>
+</body>
+</html>
